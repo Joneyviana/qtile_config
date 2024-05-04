@@ -9,7 +9,7 @@
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
 # in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# to use, copy, modify, merge, puish, distribute, sublicense, and/or sell
 # copies of the Software, and to permit persons to whom the Software is
 # furnished to do so, subject to the following conditions:
 #
@@ -24,31 +24,83 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
-from libqtile import bar, layout, widget, hook
+from libqtile import bar, layout, hook, extension
 from libqtile.config import Click, Drag, Group, Key, Match, Screen
 from libqtile.lazy import lazy
 from libqtile.utils import guess_terminal
 from libqtile.log_utils import logger
+from libqtile.widget.pulse_volume import PulseVolume
+from qtile_extras.popup.toolkit import PopupRelativeLayout, PopupSlider
 
-from qtile_extras.widget.decorations import PowerLineDecoration
+
+from qtile_extras import widget
+from qtile_extras.widget.decorations import PowerLineDecoration, RectDecoration,   BorderDecoration
+from qtile_extras.popup.templates.mpris2 import COMPACT_LAYOUT, DEFAULT_LAYOUT
+from qtile_extras.widget.brightnesscontrol import BRIGHTNESS_NOTIFICATION
 
 import os
 import subprocess
 import random
+import re
 
-mod = "mod4"
+mod = "mod1"
 terminal = guess_terminal()
 
 @hook.subscribe.startup_once
 def autostart():
     home = os.path.expanduser('~/.config/qtile/autostart.sh')
     subprocess.call([home])
+
+def get_brightness():
+    return subprocess.run("xrandr --verbose --current | grep ^'HDMI-A-0' -A5 | tail -n1", shell=True, capture_output=True).stdout
     
-powerline = {
-    "decorations": [
-        PowerLineDecoration(path="arrow_right", padding_y=5)
-    ]
-}
+def adjust_brightness(value):
+    brightness_text = get_brightness()
+    brightness = float(re.findall("\d+\.\d+", str(brightness_text))[0]) + value
+    os.system("xrandr --output 'HDMI-A-0' --brightness {0}".format(brightness))
+    return brightness
+    
+def label_brightness(value):
+    percentage = int(value * 100)
+    return f"Brightness {percentage}%"
+    
+def show_brightness_menu(qtile, output):
+    if BRIGHTNESS_NOTIFICATION.configured and not BRIGHTNESS_NOTIFICATION.finalized:
+       BRIGHTNESS_NOTIFICATION.popup.clear()
+       BRIGHTNESS_NOTIFICATION.update_controls(brightness=output,text=label_brightness(output))
+    else :
+       BRIGHTNESS_NOTIFICATION.finalized = False
+       BRIGHTNESS_NOTIFICATION._configure(qtile)
+       BRIGHTNESS_NOTIFICATION.show(hide_on_timeout=0.5, centered=True)
+       BRIGHTNESS_NOTIFICATION.update_controls(brightness=output,text=label_brightness(output))
+    
+    
+def increase1_brightness(qtile):
+    show_brightness_menu(qtile,adjust_brightness(0.01))
+      
+def increase10_brightness(qtile): 
+    
+    show_brightness_menu(qtile, adjust_brightness(0.10))
+
+def decrease1_brightness(qtile):
+     show_brightness_menu(qtile, adjust_brightness(-0.01))
+      
+def decrease10_brightness(qtile):
+    show_brightness_menu(qtile, adjust_brightness(-0.10))
+
+
+def execute_client(command):
+    os.system("python ~/.config/qtile/server_client/client.py "+ command)
+
+def next_music(qtile):
+    execute_client("pause")
+    execute_client("move down")
+    execute_client("play")
+
+def previous_music(qtile):
+    execute_client("pause")
+    execute_client("move up")
+    execute_client("play")
 
 keys = [
     # A list of available commands that can be bound to keys can be found
@@ -96,25 +148,41 @@ keys = [
     Key([mod, "control"], "r", lazy.reload_config(), desc="Reload the config"),
     Key([mod, "control"], "q", lazy.shutdown(), desc="Shutdown Qtile"),
     Key([mod], "r", lazy.spawncmd(), desc="Spawn a command using a prompt widget"),
+    Key([mod], "Up", lazy.function(increase10_brightness)),
+    Key([mod, "shift"], "Up", lazy.function(increase1_brightness)),
+    Key([mod], "Down", lazy.function(decrease10_brightness)),
+    Key([mod, "shift"], "Down", lazy.function(decrease1_brightness)),
+    Key([mod, "control"], "Down", lazy.function(next_music)),
+    Key([mod, "control"], "Up", lazy.function(previous_music)),
 ]
 
 groups = []
 
 
-groups.append(Group("Web"))
-groups.append(Group("Editor",spawn="./Downloads/android-studio/bin/studio.sh"))
-groups.append(Group("Terminal",spawn="alacritty"))
+groups.append(Group("Spotify"))
+groups.append(Group("Web", spawn='google-chrome-stable'))
+groups.append(Group("Terminal", spawn="alacritty"))
 groups.append(Group("Others"))
 
 
-keys.append(Key([mod],"1",lazy.group["Web"].toscreen()))
-keys.append(Key([mod],"2",lazy.group["Editor"].toscreen()))
+keys.append(Key([mod],"1",lazy.group["Spotify"].toscreen()))
+keys.append(Key([mod],"2",lazy.group["Web"].toscreen()))
 keys.append(Key([mod],"3",lazy.group["Terminal"].toscreen()))
 keys.append(Key([mod],"4",lazy.group["Others"].toscreen()))
 
 
+appearence = [("~/.config/qtile/archblue.png","0c16d7","ffffff")
+,("~/.config/qtile/archGreen.jpg", "588365", "000000"),
+("~/.config/qtile/archPurple.jpg", "62026F", "eb97ee"),
+("~/.config/qtile/archRed.jpg", "670000", "eb97ee")]
+
+
+random_appearance = random.choice(appearence)
+wallpaper = random_appearance[0]
+cor = random_appearance[1]
+
 layouts = [
-    layout.Columns(border_focus_stack=["#d75f5f", "#8f3d3d"], border_width=4),
+           layout.Columns(border_normal=cor, ratio=5,margin=[2,2,4,2], border_focus=random_appearance[2], border_width=3),
     layout.Max(),
     # Try more layouts by unleashing below layouts.
     # layout.Stack(num_stacks=2),
@@ -129,42 +197,58 @@ layouts = [
     # layout.Zoomy(),
 ]
 
+forward = {
+"decorations": [
+        PowerLineDecoration(path="forward_slash"),
+    ]
+}
+
+back = {
+"decorations": [
+        PowerLineDecoration(path="back_slash"),
+    ]
+}
+
+arrow_left = {
+"decorations":[
+    PowerLineDecoration(path="rounded_left")
+    ]
+}
+
+arrow_right = {
+"decorations":[
+    PowerLineDecoration(path="rounded_right")
+    ]
+}
+
 widget_defaults = dict(
-    font="sans",
-    fontsize=12,
-    padding=3,
+    font= "Consolas",
+    fontsize=14,
+    foreground = random_appearance[2]
 )
 extension_defaults = widget_defaults.copy()
-
-wallpapers = ["~/.config/qtile/archblue.png","~/.config/qtile/archGreen.jpg","~/.config/qtile/archPurple.jpg"]
 
 screens = [
     Screen(
         top=bar.Bar(
             [
-                widget.CurrentLayout(),
-                widget.GroupBox(),
-                widget.Prompt(),
-                widget.WindowName(),
-                widget.Chord(
-                    chords_colors={
-                        "launch": ("#ff0000", "#ffffff"),
-                    },
-                    name_transform=lambda name: name.upper(),
-                ),
-                # NB Systray is incompatible with Wayland, consider using StatusNotifier instead
-                # widget.StatusNotifier(),
-                widget.Systray(),
-                widget.Volume(),
-                widget.Clock(format="%Y-%m-%d %a %I:%M %p",background="444444", **powerline)),
+                widget.ThermalSensor(format="CPU: {temp:.0f}{unit}", background=cor, **arrow_left),
+                widget.Spacer(**arrow_right),
+                widget.GroupBox(**arrow_left, background="#00000075"),
+                widget.Prompt(**arrow_left, background=cor),
+                widget.Mpris2(scroll=True,max_chars=45,**arrow_left, background=cor),
+                widget.Spacer(**arrow_right),
+                widget.Clock(format="%d %a %I:%M %p", background="#00000075",**arrow_left),
+                widget.PulseVolume(background=cor),
             ],
-            24,
+            18,
             background = "#00000000",
-            # border_width=[2, 0, 2, 0],  # Draw top and bottom borders
-            # border_color=["ff00ff", "000000", "ff00ff", "000000"]  # Borders are magenta
+            margin=[2,4,0,4],
+           # border_width=[2, 8, 0, 8],  # Draw top and bottom borders
+            border_color=["#00000000", "#00000000", "ff00ff", "#00000000"]  # Borders are magenta
         ),
         wallpaper_mode = "strech",
-        wallpaper = random.choice(wallpapers),
+        wallpaper = wallpaper,
         # You can uncomment this variable if you see that on X11 floating resize/moving is laggy
         # By default we handle these events delayed to already improve performance, however your system might still be struggling
         # This variable is set to None (no cap) by default, but you can set it to 60 to indicate that you limit it to 60 events per second

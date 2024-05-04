@@ -1,0 +1,25 @@
+Traceback (most recent call last):
+  File "/home/joney/.config/qtile/ncspotscript.py", line 12, in <module>
+    process.wait()
+  File "/usr/lib/python3.11/subprocess.py", line 1264, in wait
+    return self._wait(timeout=timeout)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/subprocess.py", line 2046, in _wait
+    (pid, sts) = self._try_wait(0)
+                 ^^^^^^^^^^^^^^^^^
+  File "/usr/lib/python3.11/subprocess.py", line 2004, in _try_wait
+    (pid, sts) = os.waitpid(self.pid, wait_flags)
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/home/joney/.config/qtile/ncspotscript.py", line 9, in <module>
+    time.sleep(10)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/home/joney/.config/qtile/ncspotscript.py", line 9, in <module>
+    time.sleep(10)
+KeyboardInterrupt
+Traceback (most recent call last):
+  File "/home/joney/.config/qtile/ncspotscript.py", line 9, in <module>
+    time.sleep(10)
+KeyboardInterrupt
